@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { AppShell, PageIntro, SectionCard } from './app-shell'
 import { Button } from './ui/button'
+import { useSharedRefresh } from '@/lib/use-shared-refresh'
 
 type Data = { page: any; identity: any[]; documents: any[]; blocks: any[] }
 const documentTypes = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.mp4,.zip'
@@ -10,6 +11,7 @@ const allowedDocumentExtensions = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', '
 const identityLabels: Record<string, string> = { mission: 'Mission', vision: 'Vision', values: 'Core values' }
 
 export function OnboardingManager() {
+  const refreshKey = useSharedRefresh()
   const [data, setData] = useState<Data | null>(null)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState<string | null>(null)
@@ -17,7 +19,7 @@ export function OnboardingManager() {
   const [message, setMessage] = useState('')
 
   const load = async () => { const response = await fetch('/api/onboarding', { cache: 'no-store' }); const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Could not load onboarding data'); setData(result) }
-  useEffect(() => { load().catch((error) => setMessage(error.message)) }, [])
+  useEffect(() => { load().catch((error) => setMessage(error.message)) }, [refreshKey])
   if (!data) return <AppShell title="Onboarding Page Manager"><p className="text-sm text-[#718089]">{message || 'Loading onboarding settings…'}</p></AppShell>
 
   const update = (patch: Partial<Data>) => setData({ ...data, ...patch })

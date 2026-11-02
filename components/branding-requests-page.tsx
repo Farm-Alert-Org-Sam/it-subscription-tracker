@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppShell, PageIntro, SectionCard, StatusPill, Modal } from '@/components/app-shell'
 import { CalendarDays, Check, Clock3, FileText, Filter, Grid2X2, Link as LinkIcon, List, Plus, Search, Upload, X } from 'lucide-react'
+import { useSharedRefresh } from '@/lib/use-shared-refresh'
 
 type Status = 'Submitted' | 'In Review' | 'In Progress' | 'Awaiting Feedback' | 'Approved' | 'Delivered' | 'Rejected'
 type Request = { id: string; title: string; requester: string; department: string; email: string; type: string; priority: 'Low' | 'Medium' | 'High' | 'Urgent'; deadline: string; assignee: string; status: Status; description: string; audience: string; approval: string; files: string[]; createdAt: string }
@@ -19,9 +20,10 @@ function daysUntil(date: string) { return Math.ceil((new Date(`${date}T12:00:00`
 function priorityTone(priority: Request['priority']) { return priority === 'Urgent' || priority === 'High' ? 'red' : priority === 'Medium' ? 'amber' : 'slate' }
 
 export function BrandingRequestsPage() {
+  const refreshKey = useSharedRefresh()
   const [shareCopied, setShareCopied] = useState(false)
   const [requests, setRequests] = useState(initialRequests)
-  useEffect(() => { fetch('/api/branding-requests', { cache: 'no-store' }).then((response) => response.ok ? response.json() : []).then((rows) => { if (Array.isArray(rows) && rows.length) setRequests(rows.map((row) => ({ id: row.requestCode, title: row.title, requester: row.requesterName, department: row.department, email: row.requesterEmail, type: row.requestType, priority: row.priority, deadline: row.deadline, assignee: row.assignee, status: row.status, description: row.description, audience: row.audience, approval: row.approval, files: row.files ?? [], createdAt: row.createdAt }))) }).catch(() => undefined) }, [])
+  useEffect(() => { fetch('/api/branding-requests', { cache: 'no-store' }).then((response) => response.ok ? response.json() : []).then((rows) => { if (Array.isArray(rows)) setRequests(rows.map((row) => ({ id: row.requestCode, title: row.title, requester: row.requesterName, department: row.department, email: row.requesterEmail, type: row.requestType, priority: row.priority, deadline: row.deadline, assignee: row.assignee, status: row.status, description: row.description, audience: row.audience, approval: row.approval, files: row.files ?? [], createdAt: row.createdAt }))) }).catch(() => undefined) }, [refreshKey])
   const [selected, setSelected] = useState<Request | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [view, setView] = useState<'table' | 'board'>('table')

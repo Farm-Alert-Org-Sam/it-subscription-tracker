@@ -7,6 +7,7 @@ import { createSubscription, deleteSubscription } from "@/app/actions/subscripti
 import { CatalogManager } from '@/components/catalog-manager'
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSharedRefresh } from '@/lib/use-shared-refresh'
 import { Activity, Bell, CalendarDays, Camera, Check, CheckCircle2, ChevronRight, CircleHelp, CloudDownload, Database, DatabaseBackup, Download, FileText, LayoutDashboard, Link as LinkIcon, LogOut, Menu, MoreHorizontal, Palette, Plus, Search, Settings, ShieldCheck, Users, X } from "lucide-react"
 
 const cameras: { station: string; name: string; id: string; location: string; status: string; seen: string; firmware: string; uptime: string; incidents: number; address: string }[] = [
@@ -32,6 +33,7 @@ const nav = [
 ]
 
 export function FarmAlertApp({ page = "overview" }: { page?: string }) {
+  const refreshKey = useSharedRefresh()
   const [mobileNav, setMobileNav] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [cameraItems, setCameraItems] = useState(cameras)
@@ -42,7 +44,7 @@ export function FarmAlertApp({ page = "overview" }: { page?: string }) {
   const [showSubscriptionForm, setShowSubscriptionForm] = useState(false)
   const [renewalName, setRenewalName] = useState<string | null>(null)
   const [query, setQuery] = useState("")
-  useEffect(() => { const loadSharedState = async () => { try { const response = await fetch('/api/dashboard-state', { cache: 'no-store' }); if (!response.ok) throw new Error('Unable to load shared dashboard state'); const data = await response.json(); if (Array.isArray(data.subscriptions)) setSubscriptionItems(data.subscriptions.map((item: any) => { const expiration = new Date(`${item.expirationDate}T00:00:00`); const days = Math.ceil((expiration.getTime() - Date.now()) / 86400000); return { id: item.id, name: item.softwareName, category: item.category, owner: item.ownerDepartment || 'IT Operations', expires: expiration.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }), days, status: days <= 0 ? 'Expired' : days <= 15 ? 'Expiring Soon' : 'Active', cost: `₦${Number(item.renewalCost).toLocaleString('en-NG')}`, currency: item.currency, initials: item.softwareName.slice(0, 2).toUpperCase() } })); if (Array.isArray(data.cameras) && data.cameras.length > 0) setCameraItems(data.cameras.map((item: any) => ({ station: item.station, name: item.cameraName, id: item.cameraId, location: item.location, status: item.status, seen: item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleString() : 'Not yet seen', firmware: '—', uptime: '—', incidents: 0, address: '—' }))) } finally { setStateReady(true) } }; loadSharedState() }, [])
+  useEffect(() => { const loadSharedState = async () => { try { const response = await fetch('/api/dashboard-state', { cache: 'no-store' }); if (!response.ok) throw new Error('Unable to load shared dashboard state'); const data = await response.json(); if (Array.isArray(data.subscriptions)) setSubscriptionItems(data.subscriptions.map((item: any) => { const expiration = new Date(`${item.expirationDate}T00:00:00`); const days = Math.ceil((expiration.getTime() - Date.now()) / 86400000); return { id: item.id, name: item.softwareName, category: item.category, owner: item.ownerDepartment || 'IT Operations', expires: expiration.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }), days, status: days <= 0 ? 'Expired' : days <= 15 ? 'Expiring Soon' : 'Active', cost: `₦${Number(item.renewalCost).toLocaleString('en-NG')}`, currency: item.currency, initials: item.softwareName.slice(0, 2).toUpperCase() } })); if (Array.isArray(data.cameras) && data.cameras.length > 0) setCameraItems(data.cameras.map((item: any) => ({ station: item.station, name: item.cameraName, id: item.cameraId, location: item.location, status: item.status, seen: item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleString() : 'Not yet seen', firmware: '—', uptime: '—', incidents: 0, address: '—' }))) } finally { setStateReady(true) } }; loadSharedState() }, [refreshKey])
   useEffect(() => { const handler = (event: Event) => setRenewalName((event as CustomEvent<string>).detail); window.addEventListener('farm-alert-renew', handler); return () => window.removeEventListener('farm-alert-renew', handler) }, [])
   const path = usePathname()
   const current = page === "overview" ? "Overview" : page === "catalog-manager" ? "Catalog Manager" : page[0].toUpperCase() + page.slice(1)

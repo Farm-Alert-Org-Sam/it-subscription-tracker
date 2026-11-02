@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { CheckCircle2, Clock3, DatabaseBackup, Download, Plus, RotateCcw, ShieldAlert } from "lucide-react"
+import { useSharedRefresh } from '@/lib/use-shared-refresh'
 
 const initialEvents: { id: string; type: string; scheduled: string; completed: string; status: string; provider: string }[] = []
 
 export function BackupPage() {
+  const refreshKey = useSharedRefresh()
   const [events, setEvents] = useState(initialEvents)
   const [showForm, setShowForm] = useState(false)
-  useEffect(() => { fetch('/api/dashboard-state', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((data) => { if (Array.isArray(data?.backups)) { const recorded = data.backups.map((event: any) => ({ id: event.id, type: event.backupType, scheduled: new Date(event.scheduledFor).toLocaleString(), completed: event.completedAt ? new Date(event.completedAt).toLocaleString() : '—', status: event.status === 'completed' ? 'Completed' : 'Missed', provider: event.provider })); const now = new Date(); const missedWeeks = Array.from({ length: 8 }, (_, index) => { const weekEnd = new Date(now); weekEnd.setDate(now.getDate() - index * 7); weekEnd.setHours(23, 59, 59, 999); return weekEnd }).filter((weekEnd) => !data.backups.some((event: any) => { const scheduled = new Date(event.scheduledFor); return event.backupType === 'Weekly recovery test' && Math.abs(scheduled.getTime() - weekEnd.getTime()) < 4 * 86400000 })).map((weekEnd) => ({ id: `missed-week-${weekEnd.toISOString()}`, type: 'Weekly recovery test', scheduled: weekEnd.toLocaleString(), completed: '—', status: 'Missed', provider: 'No recorded event' })); setEvents([...missedWeeks, ...recorded]) } }).catch(() => undefined) }, [])
+  useEffect(() => { fetch('/api/dashboard-state', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((data) => { if (Array.isArray(data?.backups)) { const recorded = data.backups.map((event: any) => ({ id: event.id, type: event.backupType, scheduled: new Date(event.scheduledFor).toLocaleString(), completed: event.completedAt ? new Date(event.completedAt).toLocaleString() : '—', status: event.status === 'completed' ? 'Completed' : 'Missed', provider: event.provider })); const now = new Date(); const missedWeeks = Array.from({ length: 8 }, (_, index) => { const weekEnd = new Date(now); weekEnd.setDate(now.getDate() - index * 7); weekEnd.setHours(23, 59, 59, 999); return weekEnd }).filter((weekEnd) => !data.backups.some((event: any) => { const scheduled = new Date(event.scheduledFor); return event.backupType === 'Weekly recovery test' && Math.abs(scheduled.getTime() - weekEnd.getTime()) < 4 * 86400000 })).map((weekEnd) => ({ id: `missed-week-${weekEnd.toISOString()}`, type: 'Weekly recovery test', scheduled: weekEnd.toLocaleString(), completed: '—', status: 'Missed', provider: 'No recorded event' })); setEvents([...missedWeeks, ...recorded]) } }).catch(() => undefined) }, [refreshKey])
   const missed = useMemo(() => events.filter((event) => event.status === "Missed"), [events])
   const today = new Date().toDateString()
   const dailyToday = events.some((event) => event.type === 'Daily backup' && event.status === 'Completed' && new Date(event.completed).toDateString() === today)

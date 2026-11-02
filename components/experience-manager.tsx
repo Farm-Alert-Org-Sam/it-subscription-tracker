@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { CalendarDays, ClipboardCheck, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react"
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { AppShell, PageIntro, SectionCard } from "@/components/app-shell"
+import { useSharedRefresh } from '@/lib/use-shared-refresh'
 
 type Employee = { id: string; fullName: string; email: string; phone: string | null; department: string | null; jobTitle: string | null; startDate: string | null; birthday: string | null; pensionProvider: string | null; pensionNumber: string | null; taxId: string | null; lastBirthdayEmailSentYear: number | null }
 const tabs = ["Overview", "Employee Biodata", "Birthdays", "Attendance", "Pension", "Tax"] as const
@@ -12,6 +13,7 @@ type FormState = Omit<Employee, "id">
 const emptyForm: FormState = { fullName: "", email: "", phone: "", department: "", jobTitle: "", startDate: "", birthday: "", pensionProvider: "", pensionNumber: "", taxId: "", lastBirthdayEmailSentYear: null }
 
 export function ExperienceManagerPage() {
+  const refreshKey = useSharedRefresh()
   const [tab, setTab] = useState<Tab>("Overview")
   const [employees, setEmployees] = useState<Employee[]>([])
   const [query, setQuery] = useState("")
@@ -26,7 +28,7 @@ export function ExperienceManagerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = () => fetch("/api/experience-manager", { cache: "no-store" }).then(async (r) => { if (!r.ok) throw new Error(); return r.json() }).then((data) => setEmployees(data.employees ?? [])).catch(() => setError("Employee records could not be loaded.")).finally(() => setLoading(false))
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [refreshKey])
   const filtered = useMemo(() => employees.filter((employee) => `${employee.fullName} ${employee.email} ${employee.department ?? ""} ${employee.jobTitle ?? ""}`.toLowerCase().includes(query.toLowerCase())), [employees, query])
   const save = async (event: React.FormEvent) => { event.preventDefault(); setSaving(true); setError(""); try { const response = await fetch("/api/experience-manager", { method: editing ? "PATCH" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(editing ? { ...form, id: editing.id } : form) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setEmployees((current) => (editing ? current.map((employee) => employee.id === data.employee.id ? data.employee : employee) : [...current, data.employee]).sort((a, b) => a.fullName.localeCompare(b.fullName))); setForm(emptyForm); setEditing(null); setShowForm(false); setTab("Employee Biodata") } catch (err) { setError(err instanceof Error ? err.message : "Unable to save employee.") } finally { setSaving(false) } }
   const importEmployees = async (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; setImporting(true); setError(""); try { const text = await file.text(); const rows = parseEmployeeFile(text, file.name); if (!rows.length) throw new Error("No valid employees found. Use CSV or JSON with full name, email, and date of birth."); const created = []; for (const row of rows) { const response = await fetch("/api/experience-manager", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(row) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || "Unable to import employee."); created.push(data.employee); } setEmployees((current) => [...current, ...created].sort((a, b) => a.fullName.localeCompare(b.fullName))); setTab("Employee Biodata") } catch (err) { setError(err instanceof Error ? err.message : "Unable to import employees.") } finally { setImporting(false) } }

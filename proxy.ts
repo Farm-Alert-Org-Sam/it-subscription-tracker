@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm"
 
 const publicPaths = ["/login", "/reset-password", "/change-password", "/api/auth", "/api/account/password-status", "/api/uptime", "/branding-request", "/api/branding-requests", "/api/onboarding/public"]
 const pageAccess: Record<string, string> = {
-  "/": "Dashboard", "/api/workspace-members": "Admin center", "/api/catalog": "Catalog Manager", "/api/onboarding": "Onboarding Page Manager", "/subscriptions": "Subscriptions", "/cameras": "Camera status", "/backups": "Backup & recovery", "/uptime": "Website uptime", "/branding-requests": "Branding requests", "/onboarding": "Onboarding Page Manager", "/catalog-manager": "Catalog Manager", "/admin": "Admin center", "/attendance": "Employee Attendance Sign-In", "/settings": "Settings",
+  "/": "Dashboard", "/structure": "Admin center", "/api/workspace-members": "Admin center", "/api/catalog": "Catalog Manager", "/api/onboarding": "Onboarding Page Manager", "/subscriptions": "Subscriptions", "/cameras": "Camera status", "/backups": "Backup & recovery", "/uptime": "Website uptime", "/branding-requests": "Branding requests", "/onboarding": "Onboarding Page Manager", "/catalog-manager": "Catalog Manager", "/admin": "Admin center", "/attendance": "Employee Attendance Sign-In", "/settings": "Settings",
 }
 
 function requiredPage(path: string) { return Object.entries(pageAccess).find(([route]) => route === "/" ? path === route : path === route || path.startsWith(`${route}/`))?.[1] }

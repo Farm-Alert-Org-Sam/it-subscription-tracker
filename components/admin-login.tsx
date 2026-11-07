@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { signIn } from "@/lib/auth-client"
+import { createClient } from "@/lib/supabase/client"
 
 export function AdminLogin() {
   const router = useRouter()
@@ -18,13 +18,10 @@ export function AdminLogin() {
     setLoading(true)
     const normalizedUsername = username.trim()
     const email = normalizedUsername.toLowerCase() === "fa-tech-team" ? "sammyfemi18@gmail.com" : normalizedUsername.toLowerCase()
-    let result = await signIn.email({ email, password })
-    if (result.error && username.trim().toLowerCase() === "fa-tech-team" && password === "Fa@it-dashpass") {
-      await fetch("/api/auth/sign-up/email", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "FA-Tech-Team", email, password }) })
-      result = await signIn.email({ email, password })
-    }
+    const supabase = createClient()
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
-    if (result.error) {
+    if (signInError) {
       setError("Invalid admin credentials.")
       return
     }

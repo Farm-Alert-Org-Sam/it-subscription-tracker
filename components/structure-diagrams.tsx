@@ -62,7 +62,7 @@ const diagrams = [
     class Logged,Authenticated,FirstLogin,PageAccess decision
     class SharedDB,AttendanceDB,Email,Refresh service` },
   { id: 'data-flow', title: '3. System and data flow', description: 'The actual application layers and integrations found in this project.', code: `flowchart LR
-    Browser["Next.js pages and React components"] --> Auth["Better Auth /api/auth"]
+    Browser["Next.js pages and React components"] --> Auth["Supabase Auth"]
     Browser --> APIs["Next.js API routes"]
     APIs --> DB[("Neon Postgres / Drizzle tables")]
     APIs --> Blob["Vercel Blob\nattendance photos and uploads"]

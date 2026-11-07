@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { authClient } from '@/lib/auth-client'
+import { createClient } from '@/lib/supabase/client'
 
 export default function ChangePasswordPage() {
   const router = useRouter()
@@ -17,8 +17,13 @@ export default function ChangePasswordPage() {
     setError('')
     if (!currentPassword || password.length < 8 || password !== confirmation) { setError('Use at least 8 characters and make both passwords match.'); return }
     setSaving(true)
-    const result = await authClient.changePassword({ currentPassword, newPassword: password, revokeOtherSessions: false })
-    if (result.error) { setSaving(false); setError('We could not change your password. Please sign in again and try once more.'); return }
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) { setSaving(false); setError('Your session has expired. Please sign in again.'); return }
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword })
+    if (signInError) { setSaving(false); setError('We could not change your password. Please sign in again and try once more.'); return }
+    const { error: updateError } = await supabase.auth.updateUser({ password })
+    if (updateError) { setSaving(false); setError('We could not change your password. Please try again.'); return }
     await fetch('/api/account/password-status', { method: 'PATCH' })
     router.replace('/')
     router.refresh()

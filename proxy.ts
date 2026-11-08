@@ -27,10 +27,14 @@ export async function proxy(request: NextRequest) {
 
   const required = requiredPage(path)
   if (required && user.email) {
-    const [member] = await db.select({ role: workspaceMembers.role, accessPages: workspaceMembers.accessPages }).from(workspaceMembers).where(eq(workspaceMembers.email, user.email.trim().toLowerCase())).limit(1)
-    const accessPages = Array.isArray(member?.accessPages) ? member.accessPages.filter((page): page is string => typeof page === "string") : []
-    const hasExplicitAccess = Boolean(member && member.role !== "Admin" && accessPages.length > 0 && !accessPages.includes(required))
-    if (hasExplicitAccess) return NextResponse.redirect(new URL(`/no-access?page=${encodeURIComponent(required)}`, request.url))
+    try {
+      const [member] = await db.select({ role: workspaceMembers.role, accessPages: workspaceMembers.accessPages }).from(workspaceMembers).where(eq(workspaceMembers.email, user.email.trim().toLowerCase())).limit(1)
+      const accessPages = Array.isArray(member?.accessPages) ? member.accessPages.filter((page): page is string => typeof page === "string") : []
+      const hasExplicitAccess = Boolean(member && member.role !== "Admin" && accessPages.length > 0 && !accessPages.includes(required))
+      if (hasExplicitAccess) return NextResponse.redirect(new URL(`/no-access?page=${encodeURIComponent(required)}`, request.url))
+    } catch {
+      // Allow authentication to complete even if the optional workspace access lookup is temporarily unavailable.
+    }
   }
   return response
 }

@@ -11,6 +11,8 @@ import {
   ArrowDownUp,
   Bell,
   CalendarDays,
+  Camera,
+  AlertTriangle,
   Check,
   ChevronDown,
   CircleHelp,
@@ -27,6 +29,7 @@ import {
   Sparkles,
   TrendingUp,
   Users,
+  X,
 } from 'lucide-react'
 
 const subscriptions = [
@@ -61,7 +64,21 @@ export function TrackerDashboard() {
   const [effectsMode, setEffectsMode] = useEffectsMode()
   const { data: session } = useSession()
   useEffect(() => { fetch('/api/onboarding', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((data) => { if (data?.page?.token) setLiveOnboardingUrl(`/onboarding/${data.page.token}`) }).catch(() => undefined); fetch('/api/experience-manager', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((data) => { const today = new Date(); const next = (data?.employees ?? []).map((employee: { id: string; fullName: string; birthday: string | null }) => ({ ...employee, date: employee.birthday ? new Date(`${today.getFullYear()}-${employee.birthday.slice(5)}T00:00:00`) : null })).filter((employee: { date: Date | null }) => employee.date && employee.date >= new Date(today.getFullYear(), today.getMonth(), today.getDate())).sort((a: { date: Date }, b: { date: Date }) => a.date.getTime() - b.date.getTime()).slice(0, 5); setUpcomingBirthdays(next.map((employee: { id: string; fullName: string; birthday: string }) => ({ id: employee.id, fullName: employee.fullName, birthday: employee.birthday }))) }).catch(() => undefined) }, [])
-  useEffect(() => { const refreshStatuses = () => setItems((current) => current.map((item) => { const expiresAt = new Date(item.expires).getTime(); return expiresAt < Date.now() ? { ...item, status: 'Expired', days: Math.ceil((expiresAt - Date.now()) / 86400000) } : { ...item, status: item.status === 'Active' ? 'Active' : 'Expiring Soon', days: Math.ceil((expiresAt - Date.now()) / 86400000) } })) }; refreshStatuses(); const interval = window.setInterval(refreshStatuses, 60000); return () => window.clearInterval(interval) }, [])
+  useEffect(() => {
+    const refreshStatuses = () => {
+      setItems((current) => current.map((item) => {
+        const expiresAt = new Date(item.expires).getTime()
+        const days = Math.ceil((expiresAt - Date.now()) / 86400000)
+        return expiresAt < Date.now()
+          ? { ...item, status: 'Expired', days }
+          : { ...item, status: item.status === 'Active' ? 'Active' : 'Expiring Soon', days }
+      }))
+    }
+
+    refreshStatuses()
+    const interval = window.setInterval(refreshStatuses, 60000)
+    return () => window.clearInterval(interval)
+  }, [])
   const displayName = session?.user?.name || session?.user?.email?.split('@')[0] || 'Account user'
   const initials = displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
@@ -107,7 +124,7 @@ function BirthdayCard({ birthdays }: { birthdays: { id: string; fullName: string
 
 function CameraStatus() { const cameras = [{ station: 'North Field', camera: 'Camera 01', id: 'CAM-NF-001', location: 'North perimeter', status: 'online', seen: '2 min ago' }, { station: 'North Field', camera: 'Camera 02', id: 'CAM-NF-002', location: 'Pump house', status: 'offline', seen: '18 min ago' }, { station: 'Main Gate', camera: 'Camera 03', id: 'CAM-MG-003', location: 'Entry gate', status: 'online', seen: '1 min ago' }, { station: 'Main Gate', camera: 'Camera 04', id: 'CAM-MG-004', location: 'Loading bay', status: 'offline', seen: '41 min ago' }]; const online = cameras.filter((camera) => camera.status === 'online').length; return <section className="mt-8 rounded-xl border border-[#e3e7eb] bg-white p-5 shadow-[0_1px_2px_rgba(20,35,50,.03)]" id="cameras"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><div className="flex items-center gap-2"><div className="flex size-8 items-center justify-center rounded-lg bg-[#e6f4f1] text-[#1f8584]"><Camera size={17} /></div><div><h3 className="text-[16px] font-bold">CCTV camera status</h3><p className="mt-0.5 text-xs text-[#8a95a0]">Live station health from n8n observations</p></div></div></div><div className="flex items-center gap-2 text-xs"><span className="rounded-full bg-[#e8f7f1] px-2.5 py-1 font-semibold text-[#18765c]">{online} online</span><span className="rounded-full bg-[#fff0f1] px-2.5 py-1 font-semibold text-[#c44857]">{cameras.length - online} offline</span></div></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cameras.map((camera) => <div key={camera.id} className={`rounded-xl border p-4 ${camera.status === 'online' ? 'border-[#d9ece7] bg-[#fbfefd]' : 'border-[#f0dadd] bg-[#fffafb]'}`}><div className="flex items-start justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.13em] text-[#94a0a8]">{camera.station}</p><p className="mt-1 text-sm font-bold text-[#26343c]">{camera.camera}</p></div><span className={`flex size-3 rounded-full ${camera.status === 'online' ? 'bg-[#25a878] shadow-[0_0_0_4px_#dff5eb]' : 'bg-[#df5b67] shadow-[0_0_0_4px_#fde6e8]'}`} aria-label={camera.status} /></div><p className="mt-4 text-xs text-[#697781]">{camera.location}</p><div className="mt-3 flex items-center justify-between border-t border-[#edf0f1] pt-3 text-[11px]"><span className="font-mono text-[#88949c]">{camera.id}</span><span className={camera.status === 'online' ? 'text-[#38826f]' : 'font-semibold text-[#c45861]'}>{camera.status === 'online' ? `Seen ${camera.seen}` : `Offline · ${camera.seen}`}</span></div></div>)}</div><div className="mt-5 flex flex-col gap-3 rounded-lg bg-[#f6f9fa] p-3 text-xs text-[#6d7b83] sm:flex-row sm:items-center sm:justify-between"><span>Offline alerts trigger after 10 minutes without a valid heartbeat.</span><button className="font-semibold text-[#176b71]">View camera history</button></div></section> }
 
-function StatCard({ label, value, helper, icon, accent = 'slate' }: { label: string; value: string; helper: string; icon: React.ReactNode; accent?: string }) { const colors: Record<string,string> = { slate:'bg-[#f1f4f5] text-[#53636d]', amber:'bg-[#fff4df] text-[#bd7d14]', rose:'bg-[#ffebee] text-[#d64e5c]', teal:'bg-[#e4f4f3] text-[#218285]' }; return <MotionCard className="rounded-xl border border-[#e3e7eb] bg-white/90 p-5 shadow-[0_1px_2px_rgba(20,35,50,.03)]"><div className="mb-4 flex items-center justify-between"><p className="text-xs font-semibold text-[#77838e]">{label}</p><div className={`flex size-8 items-center justify-center rounded-lg ${colors[accent]}`}>{icon}</div></div><p className="text-[25px] font-bold tracking-tight text-[#1d2934]">{value}</p><p className="mt-1 text-[11px] text-[#919ba4]">{helper}</p></div></MotionCard> }
+function StatCard({ label, value, helper, icon, accent = 'slate' }: { label: string; value: string; helper: string; icon: React.ReactNode; accent?: string }) { const colors: Record<string,string> = { slate:'bg-[#f1f4f5] text-[#53636d]', amber:'bg-[#fff4df] text-[#bd7d14]', rose:'bg-[#ffebee] text-[#d64e5c]', teal:'bg-[#e4f4f3] text-[#218285]' }; return <MotionCard className="rounded-xl border border-[#e3e7eb] bg-white/90 p-5 shadow-[0_1px_2px_rgba(20,35,50,.03)]"><div className="mb-4 flex items-center justify-between"><p className="text-xs font-semibold text-[#77838e]">{label}</p><div className={`flex size-8 items-center justify-center rounded-lg ${colors[accent]}`}>{icon}</div></div><p className="text-[25px] font-bold tracking-tight text-[#1d2934]">{value}</p><p className="mt-1 text-[11px] text-[#919ba4]">{helper}</p></MotionCard> }
 function FilterSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) { return <select value={value} onChange={(e) => onChange(e.target.value)} className="h-8 rounded-md border border-[#dfe4e8] bg-white px-2.5 text-xs text-[#5f6d79] outline-none">{options.map((option) => <option key={option}>{option}</option>)}</select> }
 function CalendarView() { return <div className="grid grid-cols-7 gap-px bg-[#e7eaed] p-px">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day) => <div key={day} className="bg-[#fafbfc] p-3 text-center text-[10px] font-bold uppercase text-[#9aa3ad]">{day}</div>)}{Array.from({ length: 35 }, (_, index) => <div key={index} className="min-h-[76px] bg-white p-2 text-xs text-[#9aa3ad]"><span>{index < 3 ? '' : index - 2}</span>{[8,12,14,20,26].includes(index) && <div className="mt-2 rounded bg-[#fff0d4] px-1.5 py-1 text-[10px] font-semibold text-[#a87013]">Renewal</div>}</div>)}</div> }
 function SpendForecast() { return <div className="rounded-xl border border-[#e3e7eb] bg-white p-5"><div className="flex items-start justify-between"><div><h3 className="text-[15px] font-bold">Renewal spend forecast</h3><p className="mt-1 text-xs text-[#8a95a0]">Projected costs over the next 6 months</p></div><button className="rounded-md border border-[#e3e7eb] px-2.5 py-1.5 text-[11px] font-semibold text-[#6d7984]">6 months <ChevronDown size={12} className="ml-1 inline" /></button></div><div className="mt-6 flex h-[150px] items-end gap-3 border-b border-l border-[#e9ecef] px-4 pb-0 pt-3 sm:gap-5"><div className="flex h-full flex-1 items-end gap-2 sm:gap-3">{[22,34,25,63,42,86].map((height, i) => <div key={i} className="flex flex-1 flex-col items-center justify-end gap-2"><span className="text-[10px] font-semibold text-[#88939d]">{height > 60 ? '$4.8k' : height > 40 ? '$2.6k' : '$1.2k'}</span><div style={{ height: `${height}%` }} className={`w-full max-w-12 rounded-t-md ${height > 60 ? 'bg-[#1d8588]' : 'bg-[#c8e4e3]'}`} /></div>)}</div></div><div className="mt-3 flex justify-around text-[10px] font-medium text-[#9aa3ad]"><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span></div></div> }

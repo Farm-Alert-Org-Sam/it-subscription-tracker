@@ -23,20 +23,64 @@ export async function GET() {
   return NextResponse.json({ websites: latest }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
+function optionalText(value: unknown) {
+  if (value === undefined || value === null || value === '') return null
+  return String(value)
+}
+
+function optionalInteger(value: unknown) {
+  if (value === undefined || value === null || value === '') return null
+  const number = Number(value)
+  return Number.isNaN(number) ? null : number
+}
+
+function getCauseDetails(error: unknown) {
+  if (typeof error !== 'object' || error === null) return { message: 'Database write failed.', code: undefined }
+  const cause = 'cause' in error && typeof error.cause === 'object' && error.cause !== null ? error.cause : error
+  const details = cause as { message?: unknown; code?: unknown }
+  return {
+    message: typeof details.message === 'string' ? details.message : 'Database write failed.',
+    code: typeof details.code === 'string' ? details.code : undefined,
+  }
+}
+
 export async function POST(request: Request) {
+  let body: any
   try {
-    const body = await request.json()
-    const items = Array.isArray(body.websites) ? body.websites : Array.isArray(body.data) ? body.data : body.site ? [body.site] : [body]
-    if (!items.length || (items.length === 1 && !items[0]?.name && !items[0]?.websiteName)) return NextResponse.json({ error: 'At least one website status is required.' }, { status: 400 })
-    const values = items.map((item) => {
-      const name = item.name ?? item.websiteName
-      const url = item.url ?? item.websiteUrl
-      const checkedAt = item.checkedAt ?? item.checked_at ?? new Date().toISOString()
-      if (!name || !url || !item.status) throw new Error('Each status requires name, url, and status.')
-      const checkedDate = new Date(checkedAt)
-      if (Number.isNaN(checkedDate.getTime())) throw new Error('checkedAt must be a valid ISO date.')
-      return { userId: defaultUserId, websiteName: String(name), websiteUrl: String(url), status: String(item.status).toLowerCase(), errorMessage: item.errorMessage ?? item.error ?? null, httpStatus: item.httpStatus == null ? null : Number(item.httpStatus), responseTimeMs: item.responseTimeMs == null ? null : Number(item.responseTimeMs), checkedAt: checkedDate }
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Request body must be valid JSON.' }, { status: 400 })
+  }
+
+  const items = Array.isArray(body?.websites) ? body.websites : Array.isArray(body?.data) ? body.data : body?.site ? [body.site] : [body]
+  if (!items.length) return NextResponse.json({ error: 'At least one website status is required.' }, { status: 400 })
+
+  const values = []
+  for (const item of items) {
+    if (!item || typeof item !== 'object') return NextResponse.json({ error: 'Each website status must be an object.' }, { status: 400 })
+
+    const websiteUrl = String(item.website_url ?? item.url ?? item.websiteUrl ?? '').trim()
+    if (!websiteUrl) return NextResponse.json({ error: 'website_url is required.' }, { status: 400 })
+
+    const status = String(item.status ?? '').trim().toLowerCase()
+    if (status !== 'online' && status !== 'offline') {
+      return NextResponse.json({ error: 'status must be either "online" or "offline".' }, { status: 400 })
+    }
+
+    const parsedCheckedAt = new Date(item.checked_at ?? item.checkedAt ?? new Date())
+    values.push({
+      userId: String(item.user_id ?? item.userId ?? defaultUserId).trim() || defaultUserId,
+      websiteName: String(item.website_name ?? item.name ?? item.websiteName ?? websiteUrl).trim() || websiteUrl,
+      websiteUrl,
+      status,
+      errorMessage: optionalText(item.error_message ?? item.errorMessage ?? item.error),
+      httpStatus: optionalInteger(item.http_status ?? item.httpStatus),
+      responseTimeMs: optionalInteger(item.response_time_ms ?? item.responseTimeMs),
+      checkedAt: Number.isNaN(parsedCheckedAt.getTime()) ? new Date() : parsedCheckedAt,
     })
+  }
+
+  try {
     const saved = []
     for (const value of values) {
       const [row] = await db.insert(websiteUptimeStatus).values(value).onConflictDoUpdate({
@@ -55,6 +99,8 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ok: true, received: saved.length, websites: saved })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Invalid uptime payload.' }, { status: 400 })
+    const details = getCauseDetails(error)
+    console.error('[v0] uptime database write failed:', { message: details.message, code: details.code })
+    return NextResponse.json({ error: details.message }, { status: 500 })
   }
 }

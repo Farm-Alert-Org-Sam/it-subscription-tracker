@@ -1,4 +1,4 @@
-import { boolean, date, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { boolean, date, integer, jsonb, numeric, pgTable, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 
 export const attendance = pgTable('attendance', {
   id: uuid('id').defaultRandom().primaryKey(), employeeId: text('employee_id').notNull(), attendanceDate: date('attendance_date', { mode: 'string' }).notNull(), signInTime: timestamp('sign_in_time', { withTimezone: true }).notNull(), status: text('status').notNull(), photoPath: text('photo_path'), photoExpiresAt: timestamp('photo_expires_at', { withTimezone: true }), createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -37,7 +37,7 @@ export const websiteUptimeStatus = pgTable('website_uptime_status', {
   checkedAt: timestamp('checked_at', { withTimezone: true }).notNull(),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  userWebsiteUrlIdx: uniqueIndex('website_uptime_status_user_url_idx').on(table.userId, table.websiteUrl),
+  userWebsiteUrlUnique: unique('website_uptime_status_user_url_key').on(table.userId, table.websiteUrl),
 }))
 
 export const subscriptions = pgTable('subscriptions', {
